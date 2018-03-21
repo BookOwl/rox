@@ -3,4 +3,11 @@ name = "rox"
 version = "0.1.0"
 authors = ["BookOwl <stanleybookowl@gmail.com>"]
 
+[[bin]]
+name = "rox"
+path = "bin/rox.rs"
+
 [dependencies]
+failure = "0.1.1"
+regex = "0.2.10"
+lazy_static = "1.0.0"
