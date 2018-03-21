@@ -4,7 +4,8 @@ extern crate failure;
 extern crate lazy_static;
 extern crate regex;
 
-mod scanner;
+pub mod scanner;
+pub mod syntax;
 
 use std::env;
 use failure::Error;

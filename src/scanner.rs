@@ -205,11 +205,12 @@ fn is_alpha(c: char) -> bool {
    (c >= 'A' && c <= 'Z') ||
    c == '_' 
 }
+
 fn is_alpha_numeric(c: char) -> bool {
     is_alpha(c) || is_digit(c)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Token {
     pub token_type: TokenType,
     pub line: usize,
@@ -289,7 +290,7 @@ pub enum TokenType {
     EOF
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Literal {
     Str(String),
     Identifier(String),
