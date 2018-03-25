@@ -26,6 +26,8 @@ impl Expr {
                 scanner::Literal::Identifier(ref x) => format!("{}", x),
                 scanner::Literal::Number(ref x) => format!("{}", x),
                 scanner::Literal::Str(ref x) => format!("\"{}\"", x),
+                scanner::Literal::Bool(ref x) => format!("{}", x),
+                scanner::Literal::Nil => format!("nil"),
             }
             Expr::Unary { ref operator, ref right } => format!("({}{})",  
                                                                 operator.lexeme, 

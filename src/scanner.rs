@@ -235,14 +235,15 @@ impl fmt::Display for Token {
             Some(ref l) => match *l {
                 Literal::Number(ref x) => write!(f, " {}", x),
                 Literal::Str(ref x) | Literal::Identifier(ref x) => write!(f, " {}", x),
-
+                Literal::Bool(ref x) => write!(f, " {}", x),
+                Literal::Nil => write!(f, " nil",),
             },
             None => Ok(())
         }
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenType {
     // Single chaarcter tokens
     LeftParen,
@@ -295,4 +296,6 @@ pub enum Literal {
     Str(String),
     Identifier(String),
     Number(f64),
+    Bool(bool),
+    Nil,
 }

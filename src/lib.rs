@@ -6,6 +6,7 @@ extern crate regex;
 
 pub mod scanner;
 pub mod syntax;
+pub mod parser;
 
 use std::env;
 use failure::Error;
@@ -47,14 +48,12 @@ pub fn run_prompt() -> Result<(), Error> {
 }
 
 pub fn run_str(code: &str) -> Result<(), Error> {
-    let mut scanner = scanner::Scanner::new(code);
-    for token in scanner {
-        match token {
-            Ok(t) => println!("{}", t),
-            Err(e) => println!("{}", e),
-        }
-    }
-    return Ok(());
+    let scanner = scanner::Scanner::new(code);
+    let tokens: Result<Vec<scanner::Token>, Error> = scanner.collect();
+    let tokens = tokens?;
+    let mut parser = parser::Parser::new(tokens);
+    println!("{}", parser.parse()?.pretty_print());
+    Ok(())
 }
 
 pub fn error(line: usize, msg: &str) -> Error {
