@@ -1,15 +1,16 @@
 use super::scanner;
+pub use scanner::{Literal, Token, TokenType};
 #[derive(Debug, Clone)]
 pub enum Expr {
     Binary {
         left: Box<Expr>,
-        operator: scanner::Token,
+        operator: Token,
         right: Box<Expr>,
     },
     Grouping(Box<Expr>),
-    Literal(scanner::Literal),
+    Literal(Literal),
     Unary {
-        operator: scanner::Token,
+        operator: Token,
         right: Box<Expr>,
     }
 }

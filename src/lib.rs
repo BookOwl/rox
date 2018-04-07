@@ -7,6 +7,7 @@ extern crate regex;
 pub mod scanner;
 pub mod syntax;
 pub mod parser;
+pub mod eval;
 
 use std::env;
 use failure::Error;
@@ -28,18 +29,20 @@ pub fn run_file(path: &str) -> Result<(), Error> {
     let mut file = File::open(path)?;
     let mut code = String::new();
     file.read_to_string(&mut code)?;
-    run_str(&code)
+    let mut interp = eval::Interpeter::new();
+    run_str(&code, &mut interp)
 }
 
 pub fn run_prompt() -> Result<(), Error> {
     let stdin = io::stdin();
     let mut stdout = io::stdout();
     let mut line = String::new();
+    let mut interp = eval::Interpeter::new();
     loop {
         print!("> ");
         stdout.flush()?;
         stdin.read_line(&mut line)?;
-        match run_str(&line) {
+        match run_str(&line, &mut interp) {
             Ok(_) => (),
             Err(e) => println!("{}", e),
         }
@@ -47,12 +50,14 @@ pub fn run_prompt() -> Result<(), Error> {
     }
 }
 
-pub fn run_str(code: &str) -> Result<(), Error> {
+pub fn run_str(code: &str, interp: &mut eval::Interpeter) -> Result<(), Error> {
     let scanner = scanner::Scanner::new(code);
     let tokens: Result<Vec<scanner::Token>, Error> = scanner.collect();
     let tokens = tokens?;
     let mut parser = parser::Parser::new(tokens);
-    println!("{}", parser.parse()?.pretty_print());
+    let expr = parser.parse()?;
+    let res = interp.evaulate(&expr)?;
+    println!("{}", res);
     Ok(())
 }
 
