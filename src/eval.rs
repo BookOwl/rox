@@ -1,7 +1,7 @@
 use std::cmp::PartialEq;
 use std::ops::{Deref, DerefMut};
 use std::fmt;
-use super::syntax::{Expr, Literal, Token, TokenType};
+use super::syntax::{Expr, Statement, Literal, Token, TokenType};
 use super::error;
 use failure::Error;
 
@@ -13,7 +13,8 @@ macro_rules! assert_nonnil {
     }};
 }
 
-pub type IResult = Result<LoxValue, Error>;
+pub type IResult = Result<(), Error>;
+pub type IExprResult = Result<LoxValue, Error>;
 
 #[derive(Debug, Clone)]
 pub enum NonNilLoxValue {
@@ -91,10 +92,17 @@ impl LoxValue {
 }
 impl PartialEq for LoxValue {
     fn eq(&self, other: &Self) -> bool {
-       if self.type_of() == LoxType::Nil || other.type_of() == LoxType::Nil {
-           false
+       if self.type_of() == LoxType::Nil {
+           other.type_of() == LoxType::Nil
+       } else if other.type_of() == LoxType::Nil {
+            self.type_of() == LoxType::Nil
        } else {
-           unimplemented!()
+           match (self.as_ref().unwrap(), other.as_ref().unwrap()) {
+               (&NonNilLoxValue::Number(ref x), &NonNilLoxValue::Number(ref y)) => x == y,
+               (&NonNilLoxValue::Bool(ref x), &NonNilLoxValue::Bool(ref y)) => x == y,
+               (&NonNilLoxValue::Str(ref x), &NonNilLoxValue::Str(ref y)) => x == y,
+               _ => false,
+           }
        }
     }
 }
@@ -140,15 +148,36 @@ impl Interpeter {
 
         }
     }
-    pub fn evaulate(&mut self, expr: &Box<Expr>) -> IResult {
-        match **expr {
-            Expr::Literal(ref lit) => self.evaulate_literal(&lit),
-            Expr::Grouping(ref expr) => self.evaulate_grouping(&expr),
-            Expr::Unary{ref operator, ref right} => self.evaulate_unary(&operator, &right),
-            Expr::Binary{ref left, ref operator, ref right} => self.evaulate_binary(&left, &operator, &right)            
+    pub fn run(&mut self, stmts: &[Box<Statement>]) -> IResult {
+        for stmt in stmts {
+            self.run_stmt(stmt)?;
+        }
+        Ok(())
+    }
+    fn run_stmt(&mut self, stmt: &Box<Statement>) -> IResult {
+        match **stmt {
+            Statement::Expr(ref expr) => self.run_expr_stmt(expr),
+            Statement::Print(ref expr) => self.run_print_stmt(expr),
         }
     }
-    fn evaulate_literal(&mut self, lit: &Literal) -> IResult {
+    fn run_expr_stmt(&mut self, expr: &Box<Expr>) -> IResult {
+        self.evaluate_expr(expr)?;
+        Ok(())
+    }
+    fn run_print_stmt(&mut self, expr: &Box<Expr>) -> IResult {
+        let x = self.evaluate_expr(expr)?;
+        println!("{}", x);
+        Ok(())
+    }
+    pub fn evaluate_expr(&mut self, expr: &Box<Expr>) -> IExprResult {
+        match **expr {
+            Expr::Literal(ref lit) => self.evaluate_literal(&lit),
+            Expr::Grouping(ref expr) => self.evaluate_grouping(&expr),
+            Expr::Unary{ref operator, ref right} => self.evaluate_unary(&operator, &right),
+            Expr::Binary{ref left, ref operator, ref right} => self.evaluate_binary(&left, &operator, &right)            
+        }
+    }
+    fn evaluate_literal(&mut self, lit: &Literal) -> IExprResult {
         match *lit {
             Literal::Nil => Ok(LoxValue::nil()),
             Literal::Bool(b) => Ok(LoxValue::bool(b)),
@@ -157,11 +186,11 @@ impl Interpeter {
             Literal::Identifier(ref name) => Err(format_err!("rox can't handle variables yet")),
         }
     }
-    fn evaulate_grouping(&mut self, expr: &Box<Expr>) -> IResult {
-        self.evaulate(expr)
+    fn evaluate_grouping(&mut self, expr: &Box<Expr>) -> IExprResult {
+        self.evaluate_expr(expr)
     }
-    fn evaulate_unary(&mut self, op: &Token, right: &Box<Expr>) -> IResult {
-        let right = self.evaulate(right)?;
+    fn evaluate_unary(&mut self, op: &Token, right: &Box<Expr>) -> IExprResult {
+        let right = self.evaluate_expr(right)?;
         assert_nonnil!(right);
         let t = right.type_of();
         match op.token_type {
@@ -177,9 +206,9 @@ impl Interpeter {
             o => Err(error(op.line, &format!("Invalid unary op {:?}!", o))),
         }
     }
-    fn evaulate_binary(&mut self, left: &Box<Expr>, op: &Token, right: &Box<Expr>) -> IResult {
-        let left = self.evaulate(left)?;
-        let right = self.evaulate(right)?;
+    fn evaluate_binary(&mut self, left: &Box<Expr>, op: &Token, right: &Box<Expr>) -> IExprResult {
+        let left = self.evaluate_expr(left)?;
+        let right = self.evaluate_expr(right)?;
         match op.token_type {
             TokenType::Minus => {
                 let (x, y) = (left.as_number()?, right.as_number()?);
@@ -212,6 +241,9 @@ impl Interpeter {
             TokenType::LessEqual => {
                 let (x, y) = (left.as_number()?, right.as_number()?);
                 Ok(LoxValue::bool(x <= y))
+            },
+            TokenType::EqualEqual => {
+                Ok(LoxValue::bool(left == right))
             },
             TokenType::Plus => {
                 if left.type_of() == LoxType::Number {

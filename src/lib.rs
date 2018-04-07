@@ -55,9 +55,21 @@ pub fn run_str(code: &str, interp: &mut eval::Interpeter) -> Result<(), Error> {
     let tokens: Result<Vec<scanner::Token>, Error> = scanner.collect();
     let tokens = tokens?;
     let mut parser = parser::Parser::new(tokens);
-    let expr = parser.parse()?;
-    let res = interp.evaulate(&expr)?;
-    println!("{}", res);
+    let stmts = parser.parse();
+    match stmts {
+        Ok(stmts) => {
+            interp.run(&stmts)?;
+        },
+        Err(_) => {
+            let scanner = scanner::Scanner::new(code);
+            let tokens: Result<Vec<scanner::Token>, Error> = scanner.collect();
+            let tokens = tokens?;
+            let mut parser = parser::Parser::new(tokens);
+            let expr = parser.expression()?;
+            let res = interp.evaluate_expr(&expr)?;
+            println!("{}", res);
+        }
+    }
     Ok(())
 }
 

@@ -1,5 +1,8 @@
 extern crate rox;
 
 fn main() {
-    rox::run().unwrap();
+    match rox::run() {
+        Ok(_) => (),
+        Err(e) => eprintln!("{}", e),
+    }
 }

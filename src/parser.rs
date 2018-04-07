@@ -1,14 +1,16 @@
 use scanner::{Literal, Token, TokenType};
 use scanner::TokenType::*;
-use syntax::{Expr};
+use syntax::{Expr, Statement};
 use super::error;
 use failure::Error;
 
-pub type ParseResult = Result<Box<Expr>, Error>;
+pub type ParseResult = Result<Vec<Box<Statement>>, Error>;
+pub type StmtParseResult = Result<Box<Statement>, Error>;
+pub type ExprParseResult = Result<Box<Expr>, Error>;
 
 macro_rules! binary_rule {
     ($name:ident => $( $t:path ),+ => $next:ident) => {
-        fn $name(&mut self) -> ParseResult {
+        fn $name(&mut self) -> ExprParseResult {
             let mut expr: Box<Expr> = self.$next()?;
             while self.matches(&[$( $t , )*]) {
                 let op = self.previous().clone();
@@ -35,16 +37,37 @@ impl Parser {
         }
     }
     pub fn parse(&mut self) -> ParseResult {
-        self.expression()
+        let mut statements = vec![];
+        while !self.is_at_end() {
+            statements.push(self.statement()?);
+        }
+        Ok(statements)
     }
-    fn expression(&mut self) -> ParseResult {
+    fn statement(&mut self) -> StmtParseResult {
+        if self.matches(&[Print]) {
+            self.print_statement()
+        } else {
+            self.expression_statement()
+        }
+    }
+    fn print_statement(&mut self) -> StmtParseResult {
+        let val = self.expression()?;
+        self.consume(Semicolon, "Expect ';' after value.")?;
+        Ok(Box::new(Statement::Print(val)))
+    }
+    fn expression_statement(&mut self) -> StmtParseResult {
+        let val = self.expression()?;
+        self.consume(Semicolon, "Expect ';' after value.")?;
+        Ok(Box::new(Statement::Expr(val)))
+    }
+    pub fn expression(&mut self) -> ExprParseResult {
        self.equality()
     }
     binary_rule!(equality => BangEqual, EqualEqual => comparision);
     binary_rule!(comparision => Greater, GreaterEqual, Less, LessEqual => addition);
     binary_rule!(addition => Minus, Plus => multiplication);
     binary_rule!(multiplication => Slash, Star => unary);
-    fn unary(&mut self) -> ParseResult {
+    fn unary(&mut self) -> ExprParseResult {
         if self.matches(&[Bang, Minus]) {
             let operator = self.previous().clone();
             let right = self.unary()?;
@@ -53,7 +76,7 @@ impl Parser {
             self.primary()
         }
     }
-    fn primary(&mut self) -> ParseResult {
+    fn primary(&mut self) -> ExprParseResult {
         if self.matches(&[False]) { Ok(Box::new(Expr::Literal(Literal::Bool(false)))) }
         else if self.matches(&[True]) { Ok(Box::new(Expr::Literal(Literal::Bool(true)))) }
         else if self.matches(&[Nil]) { Ok(Box::new(Expr::Literal(Literal::Nil))) }

@@ -36,3 +36,8 @@ impl Expr {
         }
     }
 }
+
+pub enum Statement {
+    Expr(Box<Expr>),
+    Print(Box<Expr>),
+}
